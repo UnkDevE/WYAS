@@ -92,3 +92,16 @@ evalBody (List ((:) (List ((:) (Atom "define") [Atom var, defExpr])) rest)) =do
     let envFn = const $ Map.insert var evalVal env
     in local envFn $ evalBody $ List rest
 evalBody x = eval x
+
+eval (List [Atom "lambda", List params, expr]) = do
+    envLocal <- ask
+    return $ Lambda (IFunc $ applyLambda expr params) envLocal
+eval (List (Atom "lambda":_)) = throw $ BadSpecialForm "lambda"
+
+applyLambda :: LispVal -> [LispVal] -> [LispVal] -> Eval LispVal
+applyLambda expr params args = do
+    env <- ask
+    argEval <- mapM eval args
+    let env' = Map.fromList (Prelude.zipWith (\a b -> extractVar a,b)) params argEval) <> env
+    in local (const env') $ eval expr
+
